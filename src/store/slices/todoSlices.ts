@@ -12,7 +12,18 @@ type TodoStates = {
 
 
 const initialState: TodoStates = {
-    list: [],
+    list: [
+        {
+            id:"121212",
+            title: "example1",
+            completed: false,
+        },
+        {
+            id:"555555",
+            title: "example2",
+            completed: false,
+        }
+    ],
 }
 
 const todoSlices = createSlice({
@@ -33,7 +44,7 @@ const todoSlices = createSlice({
         },
         toogleComplete(state, action: PayloadAction<string>){
             state.list.map((todo:Todo) =>{
-                return todo.id == action.payload? todo.completed=!todo.completed:todo
+                return todo.id == action.payload? todo.completed =  !todo.completed:todo
             })
         },
     }
