@@ -5,6 +5,7 @@ import {RootState} from 'store/index';
 import { addTodo} from 'store/slices/todoSlices';
 import { useForm, SubmitHandler } from "react-hook-form"
 import { StringMappingType } from 'typescript';
+import {useAppDispatch, useAppSelector} from 'hooks';
 
 type Todo = {
   id: string;
@@ -17,8 +18,8 @@ type IFormInput = {
 }
 
 function Todo() {
-  const todos = useSelector((state: RootState) => state.todos);
-  const dispatch = useDispatch();
+  const todos = useAppSelector((state) => state.todos.list);
+  const dispatch = useAppDispatch();
 
   const {register, reset , handleSubmit} = useForm<IFormInput>()
 
@@ -34,7 +35,7 @@ function Todo() {
             </form>
 
             <div>
-                {todos.list.map((t:Todo,i: number) => (<div key={i}>{t.title}</div>))}
+                {todos.map((t:Todo,i: number) => (<div key={i}>{t.title}</div>))}
               </div>
         </div>
   )
