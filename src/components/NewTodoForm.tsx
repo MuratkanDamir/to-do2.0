@@ -1,6 +1,6 @@
 import {useAppDispatch} from 'hooks';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { addTodo} from 'store/slices/todoSlices';
+import { addNewTodo} from 'store/slices/todoSlices';
 import { TextField, Button } from "@mui/material";
 
 type IFormInput = {
@@ -14,8 +14,10 @@ const NewTodoForm: React.FC = () => {
     const {register, reset , handleSubmit} = useForm<IFormInput>()
   
     const onHandleSubmit: SubmitHandler<IFormInput> = (data) => {
-      dispatch( addTodo(data.task));
-      reset();
+        //dispatch( addTodo(data.task));
+        console.log("click add button")
+        dispatch(addNewTodo(data.task)) ;
+        reset();
     };
     
     return(
