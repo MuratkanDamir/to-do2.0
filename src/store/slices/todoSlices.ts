@@ -16,7 +16,7 @@ const initialState: TodoStates = {
         {
             id:"121212",
             title: "example1",
-            completed: false,
+            completed: true,
         },
         {
             id:"555555",
@@ -38,7 +38,7 @@ const todoSlices = createSlice({
             })
         },
         removeTodo(state, action: PayloadAction<string>){
-            state.list.filter((todo: Todo) =>{
+            state.list = state.list.filter((todo: Todo) =>{
                 return todo.id !== action.payload;
             })
         },

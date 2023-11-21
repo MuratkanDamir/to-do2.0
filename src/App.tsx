@@ -1,10 +1,12 @@
-import Todo from 'components/Todo';
+import TodoComponent from 'components/TodoComponent';
+import RegisterPage from 'pages/RegisterPage';
 import React from 'react';
 
-function App() {
+const App: React.FC = () => {
   return (
-    <div className="App">
-      <Todo/> 
+    <div style={{padding:'20px'}}>
+      <TodoComponent />
+      {/* <RegisterPage /> */}
     </div>
   );
 }
