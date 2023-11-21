@@ -1,5 +1,5 @@
-import { initializeApp } from "firebase/app";
-
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 type firebaseConfigType = {
     apiKey: string,
     authDomain: string,
@@ -20,3 +20,6 @@ const firebaseConfig: firebaseConfigType = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+export {db};
