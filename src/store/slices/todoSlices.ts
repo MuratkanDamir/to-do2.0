@@ -1,10 +1,8 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { db } from 'firebaseApp';
-import { collection, query, where, getDocs, addDoc} from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, deleteDoc, updateDoc} from "firebase/firestore";
 import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
-import { text } from "stream/consumers";
-import { useAppDispatch } from "hooks";
-
+import {RootState} from 'store/index';
 
 type Todo = {
     id: string;
@@ -51,7 +49,7 @@ export const fetchTodos = createAsyncThunk(
 
 export const addNewTodo = createAsyncThunk(
     'todos/addNewTodo',
-    async function(text: string){
+    async function(text: string, {dispatch}){
         try {
             const userQuery = query(collection(db, 'users'), where('userId', '==', userId));
             const userQuerySnapshot = await getDocs(userQuery);
@@ -71,7 +69,7 @@ export const addNewTodo = createAsyncThunk(
                 // Add a new todo document to the 'todos' subcollection
                 await addDoc(todosCollectionRef, todo);
 
-                addTodo(todo);
+                dispatch( addTodo(todo) );
                 console.log('Task added');
             } else {
                 console.log('User with userId', userId, 'not found.');
@@ -81,6 +79,59 @@ export const addNewTodo = createAsyncThunk(
             console.error('Error adding todo:', error);
             throw error;
         }        
+    }
+)
+
+export const deleteTodo = createAsyncThunk(
+    'todos/deleteTodo',
+    async function(id:string, {dispatch}){ 
+        try{
+            const userQuery = query(collection(db, 'users'), where('userId', '==', userId));
+            const userQuerySnapshot = await getDocs(userQuery);
+            const userDoc = userQuerySnapshot.docs[0];
+
+            const todoQuery = query(collection(userDoc.ref, 'todos'), where('id', '==', id));
+            const todoQuerySnapshot = await getDocs(todoQuery);
+            const todoDoc = todoQuerySnapshot.docs[0];
+
+            await deleteDoc(todoDoc.ref);
+            dispatch( removeTodo(id) );
+            console.log('Document successfully deleted!');
+
+        }catch(error){
+            console.error('Error removing document: ', error);
+        }
+    }
+)
+
+export const toogleCompletedStatus = createAsyncThunk(
+    'todos/toogleCompletedStatus',
+    async function(id: string, { getState, dispatch}){
+        try{
+            const { todos } = getState() as RootState;
+            const todo: Todo| undefined = todos.list.find(todo => todo.id === id);
+
+            const userQuery = query(collection(db, 'users'), where('userId', '==', userId));
+            const userQuerySnapshot = await getDocs(userQuery);
+            const userDoc = userQuerySnapshot.docs[0];
+
+            const todoQuery = query(collection(userDoc.ref, 'todos'), where('id', '==', id));
+            const todoQuerySnapshot = await getDocs(todoQuery);
+            const todoDoc = todoQuerySnapshot.docs[0];
+
+            if (todo !== undefined) {
+                await updateDoc(todoDoc.ref, {
+                    completed: !todo.completed,
+                });
+                dispatch( toogleComplete(id) );
+                console.log('Document successfully updated!');
+            } else {
+                console.error('Todo is undefined.');
+            }
+            
+        }catch(error){
+            console.error('Error updating document: ', error);
+        }    
     }
 )
 
@@ -102,9 +153,6 @@ const todoSlices = createSlice({
             })
         },
     },
-    // extraReducers: {
-    //     [fetchTodos.fulfilled]:() =>{}
-    // },
     extraReducers: (builder) => {
         builder.addCase(fetchTodos.fulfilled, (state, action) => {
             state.list = action.payload;
@@ -112,6 +160,6 @@ const todoSlices = createSlice({
     },
 })
 
-export const {addTodo, removeTodo, toogleComplete} = todoSlices.actions;
+const {addTodo, removeTodo, toogleComplete} = todoSlices.actions;
 
 export default todoSlices.reducer;

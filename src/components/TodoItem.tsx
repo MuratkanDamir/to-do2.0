@@ -1,9 +1,7 @@
 import { useAppDispatch } from "hooks";
-import { toogleComplete } from "store/slices/todoSlices";
-import { removeTodo } from "store/slices/todoSlices";
-import { Checkbox , IconButton} from "@mui/material";
+import { deleteTodo, toogleCompletedStatus } from "store/slices/todoSlices";
+import { Checkbox , IconButton } from "@mui/material";
 import DeleteIcon from '@mui/icons-material/Delete';
-
 interface TodoItemProps{
     id: string,
     title: string,
@@ -17,12 +15,12 @@ const TodoItem: React.FC<TodoItemProps> = ({ id, title, completed }) => {
             <div style={{display:'flex', alignItems:'start'}}>
                 <Checkbox
                     checked={completed}
-                    onChange = {() => dispatch(toogleComplete(id))}
+                    onChange = {() => dispatch( toogleCompletedStatus(id))}
                     color="success" 
                 />
                 {completed? (<p style={{width:'250px', overflowWrap: 'break-word' , paddingTop:'7px'}}><s>{title}</s></p>): (<p style={{width:'250px', overflowWrap: 'break-word' , paddingTop:'7px'}}>{title}</p>)}
             </div>
-            <IconButton style={{marginRight:'25px', marginTop: '4px'}} aria-label="delete" size="small" onClick={() => dispatch(removeTodo(id))}>
+            <IconButton style={{marginRight:'25px', marginTop: '4px'}} aria-label="delete" size="small" onClick={() => dispatch(deleteTodo(id))}>
                 <DeleteIcon fontSize="small" />
             </IconButton>
         </div>
