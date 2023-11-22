@@ -27,8 +27,6 @@ const NewTodoForm: React.FC = () => {
                 <Button variant="contained" color="success" size="medium" type='submit'>
                     add
                 </Button>
-                {/* <input type="text" {...register("task")} />
-                <button type='submit'>add</button> */}
             </form>
         </div>
     );

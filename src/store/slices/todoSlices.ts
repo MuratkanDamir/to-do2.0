@@ -1,12 +1,12 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { db } from 'firebaseApp';
-import { collection, query, where, getDocs, addDoc, doc, deleteDoc, updateDoc} from "firebase/firestore";
+import { collection, query, getDocs, getDoc, Timestamp, doc, deleteDoc, updateDoc, setDoc, orderBy} from "firebase/firestore";
 import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import {RootState} from 'store/index';
-
 type Todo = {
     id: string;
     title : string;
+    createdAt: string;
     completed: boolean;
 }
 type TodoStates = {
@@ -17,17 +17,14 @@ const initialState: TodoStates = {
     ],
 }
 
-const userId = '1'; // Замените на фактический идентификатор пользователя
+const userId = '4mQyg3Kc7gEuYW0nKH2h';
+const userDoc = doc(collection(db, 'users'),userId);
 
 export const fetchTodos = createAsyncThunk(
     'todos/fetchTodos',
     async function () {
-        const userQuery = query(collection(db, 'users'), where('userId', '==', userId));
-        const userQuerySnapshot = await getDocs(userQuery);
-
-        if (!userQuerySnapshot.empty) {
-            const userDoc = userQuerySnapshot.docs[0];
-            const todosQuerySnapshot = await getDocs(collection(userDoc.ref, 'todos'));
+        try{
+            const todosQuerySnapshot = await getDocs(query(collection(userDoc, 'todos'), orderBy("createdAt")));
 
             const todos: Todo[] = [];
 
@@ -40,9 +37,9 @@ export const fetchTodos = createAsyncThunk(
                 }
             });
             return todos; // Возвращает данные для использования в payload
-        } else {
-            console.log('User with userId', userId, 'not found.');
-            return []; // Возвращаем пустой массив в случае отсутствия данных
+        }catch(error){
+            console.log("Error fetch Todos:", error);
+            return [];
         }
     }
 );
@@ -51,33 +48,20 @@ export const addNewTodo = createAsyncThunk(
     'todos/addNewTodo',
     async function(text: string, {dispatch}){
         try {
-            const userQuery = query(collection(db, 'users'), where('userId', '==', userId));
-            const userQuerySnapshot = await getDocs(userQuery);
-
-            if (!userQuerySnapshot.empty) {
-                const userDoc = userQuerySnapshot.docs[0];
-                const todosCollectionRef = collection(userDoc.ref, 'todos');
-                const todosQuerySnapshot = await getDocs(todosCollectionRef);
-
-                // Get the number of documents in the todos collection
-                const numberOfTodos = todosQuerySnapshot.size;
-                const todo: Todo = {
-                    id: String(numberOfTodos+1),
-                    title: text,
-                    completed: false,
-                }
-                // Add a new todo document to the 'todos' subcollection
-                await addDoc(todosCollectionRef, todo);
-
-                dispatch( addTodo(todo) );
-                console.log('Task added');
-            } else {
-                console.log('User with userId', userId, 'not found.');
-                throw new Error('User not found');
-            }
+            const newDocRef = doc( collection(userDoc, 'todos') )
+            
+            const todo: Todo = {
+              id: newDocRef.id,
+              title: text,
+              createdAt: Timestamp.now().toDate().toISOString(),
+              completed: false,
+            };
+            // Add a new todo document to the 'todos' subcollection
+            await setDoc(newDocRef, todo);
+            dispatch( addTodo(todo) );
+            console.log('Task added');
         } catch (error) {
             console.error('Error adding todo:', error);
-            throw error;
         }        
     }
 )
@@ -86,15 +70,9 @@ export const deleteTodo = createAsyncThunk(
     'todos/deleteTodo',
     async function(id:string, {dispatch}){ 
         try{
-            const userQuery = query(collection(db, 'users'), where('userId', '==', userId));
-            const userQuerySnapshot = await getDocs(userQuery);
-            const userDoc = userQuerySnapshot.docs[0];
+            const todoDoc = doc(collection(userDoc, 'todos'), id);
 
-            const todoQuery = query(collection(userDoc.ref, 'todos'), where('id', '==', id));
-            const todoQuerySnapshot = await getDocs(todoQuery);
-            const todoDoc = todoQuerySnapshot.docs[0];
-
-            await deleteDoc(todoDoc.ref);
+            await deleteDoc(todoDoc);
             dispatch( removeTodo(id) );
             console.log('Document successfully deleted!');
 
@@ -104,31 +82,52 @@ export const deleteTodo = createAsyncThunk(
     }
 )
 
+// export const toogleCompletedStatus = createAsyncThunk(
+//     'todos/toogleCompletedStatus',
+//     async function(params: {id: string, completed: boolean}, { dispatch }){
+//         try{
+//             const { id, completed } = params;
+
+//             const todoDoc = doc(collection(userDoc, 'todos'), id);
+//             const todoSnapshot = await getDoc(todoDoc);
+
+//             if (todoSnapshot.exists()) {
+//                 const c = todoSnapshot.data().completed;
+//                 await updateDoc(todoDoc, {
+//                     completed: !c,
+//                 });
+//                 dispatch( toogleComplete(id) );
+//                 console.log('Document successfully updated!');
+//             }else{
+//                 throw new Error("document don't exist");
+//             }
+            
+
+//         }catch(error){
+//             console.error('Error updating document: ', error);
+//         }    
+//     }
+// )
 export const toogleCompletedStatus = createAsyncThunk(
     'todos/toogleCompletedStatus',
-    async function(id: string, { getState, dispatch}){
+    async function(id: string, { dispatch , getState}){
         try{
-            const { todos } = getState() as RootState;
-            const todo: Todo| undefined = todos.list.find(todo => todo.id === id);
-
-            const userQuery = query(collection(db, 'users'), where('userId', '==', userId));
-            const userQuerySnapshot = await getDocs(userQuery);
-            const userDoc = userQuerySnapshot.docs[0];
-
-            const todoQuery = query(collection(userDoc.ref, 'todos'), where('id', '==', id));
-            const todoQuerySnapshot = await getDocs(todoQuery);
-            const todoDoc = todoQuerySnapshot.docs[0];
-
-            if (todo !== undefined) {
-                await updateDoc(todoDoc.ref, {
-                    completed: !todo.completed,
-                });
-                dispatch( toogleComplete(id) );
-                console.log('Document successfully updated!');
-            } else {
-                console.error('Todo is undefined.');
-            }
             
+            const state = getState() as RootState; // Приводим тип состояния к корневому состоянию вашего приложения
+            const todo = state.todos.list.find((todo) => todo.id === id);
+      
+            if (todo !== undefined) {
+              const todoDoc = doc(collection(userDoc, 'todos'), id);
+      
+              await updateDoc(todoDoc, {
+                completed: !todo.completed,
+              });
+      
+              dispatch(toogleComplete(id));
+              console.log('Document successfully updated!');
+            } else {
+              throw new Error('Todo is undefined.');
+            }
         }catch(error){
             console.error('Error updating document: ', error);
         }    
@@ -149,7 +148,7 @@ const todoSlices = createSlice({
         },
         toogleComplete(state, action: PayloadAction<string>){
             state.list.map((todo:Todo) =>{
-                return todo.id == action.payload? todo.completed =  !todo.completed:todo
+                return todo.id === action.payload? todo.completed =  !todo.completed:todo
             })
         },
     },
