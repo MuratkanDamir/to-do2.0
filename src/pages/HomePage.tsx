@@ -1,17 +1,20 @@
 
-import TodoComponent from "components/TodoComponent";
-import TodoPage from "components/TodoPage";
-import { getAuth } from "firebase/auth";
-import { useAuth } from "hooks";
+import TodoPage from "pages/TodoPage";
 import { useSelector } from "react-redux";
 import { Navigate } from 'react-router-dom';
 import { RootState } from "store";
+import Profile from "components/Profile";
 
 const HomePage: React.FC = () =>{
 
-    const { email } = useSelector((state: RootState) => state.user);
-    // console.log("isAuth:",email);
-    return  !!email ? (<TodoPage />) : (<Navigate to="/login" />)
+    const { token } = useSelector((state: RootState) => state.user);
+    return  !!token ? 
+    (   
+        <div>
+            <Profile /> 
+            <TodoPage />
+        </div>
+    ) : (<Navigate to="/login" />)
 
 }
 

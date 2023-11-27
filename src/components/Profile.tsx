@@ -12,8 +12,8 @@ const Profile: React.FC = () =>{
     const dispatch = useAppDispatch();
 
     return(
-        <div style={{backgroundColor:'#713ABE',  display:'inline-block', padding:'10px'}}>
-            <div style={{display:'flex', alignItems:'center' ,gap:'10px'}}>
+        <div style={{backgroundColor:'#713ABE',width:'100vw',height:'10vh', padding:'10px'}}>
+            <div style={{display:'flex', alignItems:'center' ,gap:'10px', marginLeft:'20px'}}>
                 <Avatar>H</Avatar>
                 {email}
                 <Button style={{marginLeft:'30px'}}
