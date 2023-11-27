@@ -3,6 +3,7 @@ import { db } from 'firebaseApp';
 import { collection, query, getDocs, getDoc, Timestamp, doc, deleteDoc, updateDoc, setDoc, orderBy} from "firebase/firestore";
 import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import {RootState} from 'store/index';
+import { useAuth } from "hooks";
 type Todo = {
     id: string;
     title : string;
@@ -17,26 +18,33 @@ const initialState: TodoStates = {
     ],
 }
 
-const userId = '4mQyg3Kc7gEuYW0nKH2h';
-const userDoc = doc(collection(db, 'users'),userId);
+// const userId: string | null= useAuth().id;
+// const userDoc = doc(collection(db, 'users'),userId);
 
 export const fetchTodos = createAsyncThunk(
     'todos/fetchTodos',
-    async function () {
+    async function (_,{getState}) {
         try{
-            const todosQuerySnapshot = await getDocs(query(collection(userDoc, 'todos'), orderBy("createdAt")));
+            const state = getState() as RootState; // Приводим тип состояния к корневому состоянию вашего приложения
+            const userId: string | null = state.user.id;
+            if( userId !== null ){
+                const userDoc = doc(collection(db, 'users'),userId);
+                const todosQuerySnapshot = await getDocs(query(collection(userDoc, 'todos'), orderBy("createdAt")));
 
-            const todos: Todo[] = [];
+                const todos: Todo[] = [];
 
-            todosQuerySnapshot.forEach((todoDoc: QueryDocumentSnapshot<DocumentData>) => {
-                if (todoDoc.exists()) {
-                    const todoData = todoDoc.data() as Todo; // Приводим данные к типу Todo
-                    todos.push({
-                        ...todoData,
-                    });
-                }
-            });
-            return todos; // Возвращает данные для использования в payload
+                todosQuerySnapshot.forEach((todoDoc: QueryDocumentSnapshot<DocumentData>) => {
+                    if (todoDoc.exists()) {
+                        const todoData = todoDoc.data() as Todo; // Приводим данные к типу Todo
+                        todos.push({
+                            ...todoData,
+                        });
+                    }
+                });
+                return todos; // Возвращает данные для использования в payload
+            }else{
+                throw new Error("userId is null");
+            }
         }catch(error){
             console.log("Error fetch Todos:", error);
             return [];
@@ -46,20 +54,27 @@ export const fetchTodos = createAsyncThunk(
 
 export const addNewTodo = createAsyncThunk(
     'todos/addNewTodo',
-    async function(text: string, {dispatch}){
+    async function(text: string, {dispatch, getState}){
         try {
-            const newDocRef = doc( collection(userDoc, 'todos') )
-            
-            const todo: Todo = {
-              id: newDocRef.id,
-              title: text,
-              createdAt: Timestamp.now().toDate().toISOString(),
-              completed: false,
-            };
-            // Add a new todo document to the 'todos' subcollection
-            await setDoc(newDocRef, todo);
-            dispatch( addTodo(todo) );
-            console.log('Task added');
+            const state = getState() as RootState; // Приводим тип состояния к корневому состоянию вашего приложения
+            const userId: string | null = state.user.id;
+            if( userId !== null ){
+                const userDoc = doc(collection(db, 'users'),userId);
+                const newDocRef = doc( collection(userDoc, 'todos') )
+                
+                const todo: Todo = {
+                id: newDocRef.id,
+                title: text,
+                createdAt: Timestamp.now().toDate().toISOString(),
+                completed: false,
+                };
+                // Add a new todo document to the 'todos' subcollection
+                await setDoc(newDocRef, todo);
+                dispatch( addTodo(todo) );
+                console.log('Task added');
+            }else{
+                throw new Error("UserId is null");
+            }
         } catch (error) {
             console.error('Error adding todo:', error);
         }        
@@ -68,13 +83,20 @@ export const addNewTodo = createAsyncThunk(
 
 export const deleteTodo = createAsyncThunk(
     'todos/deleteTodo',
-    async function(id:string, {dispatch}){ 
+    async function(id:string, {dispatch, getState}){ 
         try{
-            const todoDoc = doc(collection(userDoc, 'todos'), id);
+            const state = getState() as RootState; // Приводим тип состояния к корневому состоянию вашего приложения
+            const userId: string | null = state.user.id;
+            if( userId !== null ){
+                const userDoc = doc(collection(db, 'users'),userId);
+                const todoDoc = doc(collection(userDoc, 'todos'), id);
 
-            await deleteDoc(todoDoc);
-            dispatch( removeTodo(id) );
-            console.log('Document successfully deleted!');
+                await deleteDoc(todoDoc);
+                dispatch( removeTodo(id) );
+                console.log('Document successfully deleted!');
+            }else{
+                throw new Error("userId is null");
+            }
 
         }catch(error){
             console.error('Error removing document: ', error);
@@ -112,21 +134,26 @@ export const toogleCompletedStatus = createAsyncThunk(
     'todos/toogleCompletedStatus',
     async function(id: string, { dispatch , getState}){
         try{
-            
             const state = getState() as RootState; // Приводим тип состояния к корневому состоянию вашего приложения
-            const todo = state.todos.list.find((todo) => todo.id === id);
-      
-            if (todo !== undefined) {
-              const todoDoc = doc(collection(userDoc, 'todos'), id);
-      
-              await updateDoc(todoDoc, {
-                completed: !todo.completed,
-              });
-      
-              dispatch(toogleComplete(id));
-              console.log('Document successfully updated!');
-            } else {
-              throw new Error('Todo is undefined.');
+            const userId: string | null = state.user.id;
+            if( userId !== null ){
+                const userDoc = doc(collection(db, 'users'), userId);
+                const todo = state.todos.list.find((todo) => todo.id === id);
+        
+                if (todo !== undefined) {
+                    const todoDoc = doc(collection(userDoc, 'todos'), id);
+            
+                    await updateDoc(todoDoc, {
+                        completed: !todo.completed,
+                    });
+            
+                    dispatch(toogleComplete(id));
+                    console.log('Document successfully updated!');
+                } else {
+                    throw new Error('Todo is undefined.');
+                }
+            }else{
+                throw new Error("userId is null");
             }
         }catch(error){
             console.error('Error updating document: ', error);
@@ -151,6 +178,9 @@ const todoSlices = createSlice({
                 return todo.id === action.payload? todo.completed =  !todo.completed:todo
             })
         },
+        emptyTodos(state){
+            state.list = [];
+        },
     },
     extraReducers: (builder) => {
         builder.addCase(fetchTodos.fulfilled, (state, action) => {
@@ -159,6 +189,6 @@ const todoSlices = createSlice({
     },
 })
 
-const {addTodo, removeTodo, toogleComplete} = todoSlices.actions;
+export const {addTodo, removeTodo, toogleComplete, emptyTodos} = todoSlices.actions;
 
 export default todoSlices.reducer;
